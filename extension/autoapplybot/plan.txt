@@ -85,3 +85,7 @@ AND JUST MAKE EVERYTHING SKIPPABLE, if it doesnt work then skip it, no blockers,
 
 
 Blacklist domains that consistently fail (bad DOM, CAPTCHAs, broken forms)
+
+;;;
+    all the endpoints that bot refers to particularly regarding fetching user information could be the same
+    as the ones used in the extension, so we need to figure out a way to make the abstraction between the two to work together
