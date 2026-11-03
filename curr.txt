@@ -48,7 +48,16 @@ now mainly, we on backend;
                 Login expirations, CAPTCHA, bot checks, unsupported controls and unexpected redirects need explicit handling. Stop or request human intervention when necessary rather than looping forever.
                 File uploads, checkboxes, radio groups, date pickers, rich-text inputs and multi-selects need dedicated handlers. They shouldn't all be treated as ordinary text fields.
                 Get the DOM state updated listener setup, just check after every move were there relevant importatn changes to DOM that werent expected, should be automatically provided by browser, check it out, keep it efficient if at all.
-                
+
+          add to jobscout the ability to store the memory on applied jobs by auto apply by checking for any emails that subsequently came in soon after from that company, hence try diversifying the applications across companies (like back to back applications) 
+          to ensure no ambiguity, and try mapping job ids and emaila ddresses precisely to the applied job to then be used later during tracking regarding updates
+           if message from same job (rejected or oas, itnerviews, etc) and also at that tiem check to ensure nothing important to do in the email; ensure no follow ups needed in the email, just a thank you for submitting hopefully. 
+
+         add to jobscout the ability of a proper forum per job posting kind of, initially for the UW run especially
+          so students can open a thread or join a thread for a particular job posting and ask others who also had the job in their
+            applied dashboards (auto check) and ask on whether they recieved any updates from the companies (this can be automated, so basically transparency across applicants)
+            so everyone knows if someone recieved an OA and others who might've recieved an interview or an offer and whatnot and overall just discuss the job posting.
+
     3. Write the frontend ui look for said extension - use react now instead of some html stuff - call it like Application Copilot
     4. Refine the extension with AI custom answers to custom questions per job application forms, user can highlight and ask ai assistant to help answer questions -> basically add a chatbot to the extension
     5. a manual builtin excel file per dashboard, that scaffolds all teh reults from queue of auto apply and that of planned, and applied automatically, and with avbility to add jobs applied manually elsewhere like just full excel file BOOSTED ready for this specific use case only (honestly more of a dashboard)
