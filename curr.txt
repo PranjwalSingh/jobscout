@@ -31,7 +31,8 @@ now mainly, we on backend;
         X. On user signup, auto-generate a default 'master' dashboard_config for every user as the fallback when no dashboard is specified. Needed for cv and cl gen
         3. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently, BASICALLY; make the filter + score + cl + cv + llm_score pipeline
         4. START THE PIPELINE, SET IT ALL UP (github actions for now)
-        5. CREATE A COLD EMAIL SCRIPT, apparently its all the heat
+        5. CREATE A COLD EMAIL SCRIPT, apparently its all the heat AND MAKE SURE TO DEVELOP A NLP MODEL THAT IS TRAINED ON HUMAN TEXTING AND CALM, HUMBLE EMAIL FORMULATIONS
+                 AND ALSO PREPARE IT LIKE AN AGENT WHERE WE PROVIDE DETAILS TO AN LLM AND ASK IT TO GENERATE A PLAN OF ATTACK INVOLVING ABILITIES LIKE : "SET EMAIL DESTINATION", "WRITE EMAIL", "SEND EMAIL", "TRACK EMAIL"
 
     finally;
     now that all major logic is setup;
@@ -61,6 +62,10 @@ now mainly, we on backend;
     3. Write the frontend ui look for said extension - use react now instead of some html stuff - call it like Application Copilot
     4. Refine the extension with AI custom answers to custom questions per job application forms, user can highlight and ask ai assistant to help answer questions -> basically add a chatbot to the extension
     5. a manual builtin excel file per dashboard, that scaffolds all teh reults from queue of auto apply and that of planned, and applied automatically, and with avbility to add jobs applied manually elsewhere like just full excel file BOOSTED ready for this specific use case only (honestly more of a dashboard)
+
+IMPORTANT: regarding llm use, support:
+        BYOK (Bring Your Own Key) ; so the more techy users can bring their own llm keys, hence:
+                power users who want faster/cheaper can plug in their own OpenAI key, everyone else gets your hosted version with rate limits.
 
 Ending with:
 	O. Reviewing the usability on the front and refining the logic on the back and full finalizing before moving ahead
