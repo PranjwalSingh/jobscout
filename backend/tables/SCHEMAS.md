@@ -9,7 +9,7 @@
 ## Core Tables
 
 ### 1. `profiles`
-Master table for Career Twin user identity. One row per user.
+Master table for Career Twin user idenstity. One row per user.
 
 ```sql
 CREATE TABLE profiles (

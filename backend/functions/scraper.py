@@ -1,3 +1,14 @@
+# Smart scraper approach using a convex hull-like strategy:
+# Build a graph of all users' job-search configurations, cluster nearby configurations,
+# and compute a convex hull of their combined requirements to define broader scraper runs.
+# Each outer scraper run fetches a shared pool of jobs (e.g., 1,000 jobs),
+# then individual user filters run underneath to extract their relevant subsets.
+# This allows users to receive different numbers of jobs (e.g., 43, 59, or 200)
+# from the same shared pool while minimizing redundant scraping and ensuring no user
+# misses jobs due to overly narrow scraper configurations.
+# right now it's one single scraper run that loops through the full matrix sequentially. 
+# Later I could cluster the search matrix entries and fan out parallel scrapers per cluster
+ 
 from __future__ import annotations
 
 import os
@@ -7,10 +18,12 @@ import time
 from datetime import datetime
 from difflib import SequenceMatcher
 import json, pathlib
-from backend.routes.creation_dashboard import apply_config_filters
+# from backend.routes.creation_dashboard import apply_config_filters
 import requests
 from bs4 import BeautifulSoup
 from supabase import create_client
+from dotenv import load_dotenv
+load_dotenv()
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -30,8 +43,8 @@ FIELD_SUPERSET = {f["value"]: f["superset"] for f in FIELDS_DATA["fields"]}
 LOCATION_TO_COUNTRY = {loc["value"].lower(): loc["country"] for loc in LOCATIONS_DATA["locations"]}
 
 
-REQUEST_DELAY   = 2
-TIME_SECONDS    = 21600  ## 6 Hours
+REQUEST_DELAY   = 10
+TIME_SECONDS    = 2160000  ## 60 Hours
 MAX_JOBS_TOTAL  = 100_000  ## per scrape
 BASE_DEPTH      = 250
 MAX_DEPTH       = 5000
@@ -48,7 +61,7 @@ def desc_similarity(a: str, b: str) -> float:
 ### Fetch all data from table, and create sets and search_matrix
 def fetch_all_dashboard_configs() -> list[dict]:
     resp = supabase.table("dashboard_configs").select(
-        "id, profile_id, include_skills, include_fields, include_locations, job_types"  ## ignoring include_companies for now, not everyone has preferences on here, gets filtered later regardless.
+        "id, user_id, include_skills, include_fields, include_locations, job_types"
     ).eq("active", True).execute()
     return resp.data or []
 
@@ -68,7 +81,7 @@ def build_sets(configs: list[dict]) -> tuple[set[str], set[str], set[str], set[s
         for jt in (cfg.get("job_types") or []):
             job_types.add(jt.lower().strip())
 
-    if not skills or not fields or not locations or not job_types:
+    if not skills and not fields and not locations and not job_types:
         print("[scraper] incomplete configs — exiting")
         return set(), set(), set(), set()
 
@@ -100,37 +113,43 @@ def build_search_matrix(fields: set[str], locations: set[str], job_types: set[st
         superset = FIELD_SUPERSET.get(f)
         if superset:
             supersets.add(superset)
+        else:
+            print(f"[matrix] WARNING: field '{f}' not found in FIELD_SUPERSET — skipping")
 
     for loc in locations:
         country = LOCATION_TO_COUNTRY.get(loc)
         if country:
             countries.add(country)
+        else:
+            print(f"[matrix] WARNING: location '{loc}' not found in LOCATION_TO_COUNTRY — skipping")
+
+    print(f"[matrix] mapped supersets: {supersets}")
+    print(f"[matrix] mapped countries: {countries}")
 
     if not supersets or not countries:
         print("[scraper] couldn't map fields/locations to search matrix — exiting")
         return []
 
-    ## search configs:
-    return [
-        (f"{superset} {job_type}",  country, job_type, get_depth(superset, country, votes))
+    matrix = [
+        (f"{superset} {job_type}", country, job_type, get_depth(superset, country, votes))
         for superset in supersets
         for country in countries
         for job_type in job_types
     ]
+    for entry in matrix:
+        print(f"[matrix] entry → keyword='{entry[0]}' | country='{entry[1]}' | job_type='{entry[2]}' | depth={entry[3]}")
+    return matrix
     
     
 def _build_global_sets_skills_n_fields() -> tuple[set[str], set[str]]:
     all_fields: set[str] = set()
     all_skills: set[str] = set()
 
-    ## flatten fields.json — just grab all values
     for f in FIELDS_DATA["fields"]:
         all_fields.add(f["value"].lower())
-    ## also add supersets
     for s in FIELDS_DATA.get("supersets", []):
         all_fields.add(s.lower())
 
-    ## flatten skills.json — recurse through every list regardless of nesting
     def extract_strings(obj):
         if isinstance(obj, list):
             for item in obj:
@@ -148,17 +167,7 @@ def _build_global_sets_skills_n_fields() -> tuple[set[str], set[str]]:
 GLOBAL_FIELDS, GLOBAL_SKILLS = _build_global_sets_skills_n_fields()
     
 def match_jobs_to_configs(batch: list[dict], configs: list[dict]) -> list[dict]:
-    user_jobs_insert_batch = []
-    for job in batch:
-        for config in configs:
-            if apply_config_filters(job, config):
-                user_jobs_insert_batch.append({
-                    "user_id":             config["user_id"],
-                    "dashboard_config_id": config["id"],
-                    "job_id":              job["id"],  
-                    "status":              "new",
-                })
-    return user_jobs_insert_batch
+    return []
     
     
 ### layers 1-5;
@@ -184,14 +193,6 @@ def layer2_dedup(
     url_set: set[str],
     title_company_map: dict[tuple[str, str], dict],
 ) -> tuple[str, dict | None]:
-    """
-        Returns:
-        ("skip", None)        → already exists, nothing to do
-        ("replace", existing) → repost, same location, replace existing
-        ("merge", existing)   → same job, new location, merge locations
-        ("insert", None)      → new job, proceed with insert
-    """
-    
     if url in url_set:
         return "skip", None
     
@@ -238,11 +239,6 @@ def layer3_and_4_extract_metadata(
     include_fields: set[str],
     include_skills: set[str],
 ) -> tuple[list[str], list[str], dict | None, dict | None, dict | None, dict | None, bool]:
-    """
-    Extracts all possible metadata from title + desc against global sets.
-    Then checks overlap against included fields/skills to determine relevance.
-    Returns: (matched_fields, matched_skills, salary, duration, season, requirements, is_relevant)
-    """
     combined = (title + " " + desc_text).lower()
 
     matched_fields = [f for f in GLOBAL_FIELDS if re.search(rf'\b{re.escape(f)}\b', combined)]
@@ -250,7 +246,6 @@ def layer3_and_4_extract_metadata(
 
     salary = extract_salary(combined)
 
-    ## hardcoded for now ig
     SEASON_SIGNALS = [
         "spring", "summer", "fall", "autumn", "winter",
         "q1", "q2", "q3", "q4",
@@ -271,7 +266,7 @@ def layer3_and_4_extract_metadata(
                 season_matches.append(m.group(0).strip())
         season = {
             "signals": found_season_signals,
-            "matches": list(dict.fromkeys(season_matches)),  ## dedup, preserve order
+            "matches": list(dict.fromkeys(season_matches)),
         } if season_matches else {"signals": found_season_signals}
 
 
@@ -282,11 +277,11 @@ def layer3_and_4_extract_metadata(
         r'(full[- ]?year|year[- ]?long)',
         r'(permanent|contract|temporary|fixed[- ]?term)',
         r'(part[- ]?time|full[- ]?time)',
-        r'(\d{4}[-/]\d{2}[-/]\d{2})\s*[-–to]+\s*(\d{4}[-/]\d{2}[-/]\d{2})',  ## 2026-05-01 - 2027-08-31
-        r'(\d{4}[-/]\d{2}[-/]\d{2})\s*[-–to]+\s*(\d{4})',                      ## 2026-05-01 - 2027
-        r'(?:start(?:ing)?|begin(?:ning)?|commence[sd]?)[:\s]+(\w+ \d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})',  ## starting September 1st, 2026
-        r'(?:start(?:ing)?|begin(?:ning)?)[:\s]+(\w+\s+\d{4})',                 ## starting May 2026
-        r'(\w+ \d{1,2}(?:st|nd|rd|th)?),?\s*(\d{4})\s*[-–to]+\s*(\w+ \d{1,2}(?:st|nd|rd|th)?),?\s*(\d{4})',  ## May 1st, 2026 - August 31st, 2026
+        r'(\d{4}[-/]\d{2}[-/]\d{2})\s*[-–to]+\s*(\d{4}[-/]\d{2}[-/]\d{2})',
+        r'(\d{4}[-/]\d{2}[-/]\d{2})\s*[-–to]+\s*(\d{4})',
+        r'(?:start(?:ing)?|begin(?:ning)?|commence[sd]?)[:\s]+(\w+ \d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})',
+        r'(?:start(?:ing)?|begin(?:ning)?)[:\s]+(\w+\s+\d{4})',
+        r'(\w+ \d{1,2}(?:st|nd|rd|th)?),?\s*(\d{4})\s*[-–to]+\s*(\w+ \d{1,2}(?:st|nd|rd|th)?),?\s*(\d{4})',
         r'(\d{1,2}\s+\w+\s+\d{4})\s*[-–to]+\s*(\d{1,2}\s+\w+\s+\d{4})'
     ]
     duration: dict | None = None
@@ -299,7 +294,6 @@ def layer3_and_4_extract_metadata(
         duration = {"matches": list(dict.fromkeys(duration_matches))}
 
 
-    ## hardcoded for now ig
     REQ_SIGNALS = [
         "bachelor", "master", "phd", "degree", "diploma",
         "pursuing", "enrolled", "currently studying",
@@ -318,7 +312,6 @@ def layer3_and_4_extract_metadata(
             end = min(len(combined), idx + 300)
             windows.append((start, end))
 
-        ## merge overlapping intervals
         windows.sort()
         merged = [windows[0]]
         for start, end in windows[1:]:
@@ -419,8 +412,10 @@ def fetch_job_detail(job_id: str) -> tuple[str, list[str]]:
         tags_el = soup.select_one("[class*=_job-criteria-list]")
         desc    = desc_el.get_text(separator=" ", strip=True) if desc_el else ""
         tags    = [t.strip() for t in tags_el.get_text(separator="|").split("|") if t.strip()] if tags_el else []
+        print(f"[detail] status={resp.status_code} | desc_len={len(desc)} | tags={tags}")
         return desc, tags
-    except Exception:
+    except Exception as e:
+        print(f"[detail] fetch error: {e}")
         return "", []
 
 
@@ -434,20 +429,21 @@ def run():
         print("[scraper] no active configs — exiting")
         return
     print(f"[scraper] {len(configs)} active dashboard config(s) loaded")
-
+    for cfg in configs:
+        print(f"  config id={cfg['id']} | fields={cfg.get('include_fields')} | locations={cfg.get('include_locations')} | job_types={cfg.get('job_types')} | skills={cfg.get('include_skills')}")
 
     skills, fields, locations, job_types = build_sets(configs)
+    print(f"[sets] fields={fields} | locations={locations} | job_types={job_types} | skills={skills}")
     if not skills and not fields and not locations and not job_types:
         return
 
-
     votes         = compute_votes(configs)
+    print(f"[votes] {votes}")
     search_matrix = build_search_matrix(fields, locations, job_types, votes)
     if not search_matrix:
         print("[scraper] empty search matrix — exiting")
         return
     print(f"[scraper] search matrix: {len(search_matrix)} entries")
-
 
     existing_resp = supabase.table("jobs").select("id, url, title, company, locations, description").execute()
     existing_rows = existing_resp.data or []
@@ -458,28 +454,31 @@ def run():
         title_company_map.setdefault(key, []).append(r)
     print(f"[scraper] {len(url_set)} existing jobs loaded into memory")
 
-
     ## --- scrape ---
     total_inserted  = 0
-    trio_scraped: dict[tuple[str, str, str], int] = {}  ## (keyword, country, job_type) → count
+    trio_scraped: dict[tuple[str, str, str], int] = {}
 
     for keyword, country, job_type, depth_limit in search_matrix:
         if total_inserted >= MAX_JOBS_TOTAL:
             break
 
         trio_key = (keyword, country, job_type)
-        print(f"\n[scraper] keyword='{keyword}' | country='{country}' | job_type='{job_type}' | depth={depth_limit}")
+        print(f"\n[scraper] ── NEW SEARCH ──────────────────────────────────")
+        print(f"[scraper] keyword='{keyword}' | country='{country}' | job_type='{job_type}' | depth={depth_limit}")
 
         start = 0
         batch: list[dict] = []
+        page  = 0
 
         while True:
             if trio_scraped.get(trio_key, 0) >= depth_limit:
+                print(f"[scraper] depth limit hit ({depth_limit}) — moving on")
                 break
             if total_inserted >= MAX_JOBS_TOTAL:
                 break
 
-            ## --- fetch page of cards ---
+            print(f"[page] fetching page {page} (start={start}) for '{keyword}' in '{country}'")
+
             try:
                 resp = requests.get(
                     "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
@@ -492,76 +491,95 @@ def run():
                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
                     timeout=15,
                 )
+                print(f"[page] response status={resp.status_code} | body_len={len(resp.text)}")
             except Exception as e:
                 print(f"[scraper] request error: {e}")
                 break
 
             soup  = BeautifulSoup(resp.text, "html.parser")
             cards = soup.find_all("div", class_="base-card")
+            print(f"[page] found {len(cards)} cards on page {page}")
             if not cards:
+                print(f"[page] no cards — stopping pagination")
                 break
+
+            cards_seen        = 0
+            cards_no_title    = 0
+            cards_no_url      = 0
+            cards_layer1_fail = 0
+            cards_dedup_skip  = 0
+            cards_queued      = 0
 
             for card in cards:
                 if trio_scraped.get(trio_key, 0) >= depth_limit:
                     break
 
-                ## --- extract card-level info ---
                 title_el = card.select_one("[class*=_title]")
                 title    = title_el.get_text(strip=True) if title_el else None
                 if not title:
+                    cards_no_title += 1
                     continue
 
-                url_el  = card.select_one("[class*=_full-link]")
-                url     = url_el["href"].split("?")[0] if url_el and url_el.get("href") else None
+                url_el = card.select_one("[class*=_full-link]")
+                url    = url_el["href"].split("?")[0] if url_el and url_el.get("href") else None
                 if not url:
+                    cards_no_url += 1
                     continue
 
                 company_el  = card.select_one("[class*=_subtitle]")
                 location_el = card.select_one("[class*=_location]")
                 company      = company_el.get_text(strip=True)  if company_el  else "Unknown"
                 job_location = location_el.get_text(strip=True) if location_el else country
-                tc_key      = (title.lower().strip(), company.lower().strip())
+                tc_key_card  = (title.lower().strip(), company.lower().strip())
 
+                cards_seen += 1
                 trio_scraped[trio_key] = trio_scraped.get(trio_key, 0) + 1
 
-                ## --- layer 1: at least one field in title ---
-                if not layer1_fields_in_title(fields, title.lower()):
+                print(f"  [card] title='{title}' | company='{company}' | loc='{job_location}'")
+
+                ## layer 1
+                passed_l1 = layer1_fields_in_title(fields, title.lower())
+                if not passed_l1:
+                    cards_layer1_fail += 1
+                    print(f"  [layer1] FAIL — title='{title}'")
                     continue
-                job_id              = url.split("-")[-1]
-                desc_text, _tags    = fetch_job_detail(job_id)
+
+                print(f"  [layer1] PASS — fetching detail...")
+                job_id           = url.split("-")[-1]
+                desc_text, _tags = fetch_job_detail(job_id)
                 time.sleep(REQUEST_DELAY)
 
-
-                ## --- layer 2: dedup ---
+                ## layer 2
                 action, existing = layer2_dedup(
                     url, title, company, job_location, desc_text, url_set, title_company_map
                 )
+                print(f"  [layer2] action={action}")
 
                 if action == "skip":
+                    cards_dedup_skip += 1
                     continue
 
                 elif action == "replace":
-                    ## layer 3+4 still needed to refresh metadata on replace
                     matched_fields, matched_skills, salary, duration, season, requirements, is_relevant = layer3_and_4_extract_metadata(
                         title, desc_text, fields, skills
                     )
-                    layer5_replace(existing, url, desc_text, matched_fields, matched_skills, salary, duration, season, requirements, url_set, title_company_map, tc_key)
+                    layer5_replace(existing, url, desc_text, matched_fields, matched_skills, salary, duration, season, requirements, url_set, title_company_map, tc_key_card)
                     continue
 
                 elif action == "merge":
-                    ## no need for layer 3+4, just appending a location
-                    layer5_merge(existing, job_location, url, url_set, title_company_map, tc_key)
+                    layer5_merge(existing, job_location, url, url_set, title_company_map, tc_key_card)
                     continue
 
-                ### or inherently action == "insert"
-                ## --- layer 3 + 4: extract metadata + relevance check ---
+                ## insert path
                 matched_fields, matched_skills, salary, duration, season, requirements, is_relevant = layer3_and_4_extract_metadata(
                     title, desc_text, fields, skills
                 )
+                print(f"  [layer3+4] relevant={is_relevant} | matched_fields={matched_fields[:5]} | matched_skills={matched_skills[:5]}")
+
                 if not is_relevant:
+                    print(f"  [layer3+4] FAIL relevance — skipping")
                     continue
 
-                ## --- layer 5: queue for batch insert ---
                 item = {
                     "url":          url,
                     "title":        title,
@@ -580,9 +598,12 @@ def run():
                     "scraped_at":   datetime.now().isoformat(),
                 }
                 batch.append(item)
+                cards_queued += 1
                 url_set.add(url)
-                title_company_map.setdefault(tc_key, []).append(item)
+                title_company_map.setdefault(tc_key_card, []).append(item)
+                print(f"  [queued] '{title}' @ '{company}' → batch size={len(batch)}")
 
+            print(f"[page] summary — seen={cards_seen} | no_title={cards_no_title} | no_url={cards_no_url} | layer1_fail={cards_layer1_fail} | dedup_skip={cards_dedup_skip} | queued={cards_queued}")
 
             inserted      = layer5_insert_jobs(batch)
             total_inserted += inserted
@@ -598,8 +619,8 @@ def run():
             batch.clear()
 
             start += 10
+            page  += 1
 
-        ## flush any remainder (shouldn't happen but safety net)
         if batch:
             inserted       = layer5_insert_jobs(batch)
             total_inserted += inserted
