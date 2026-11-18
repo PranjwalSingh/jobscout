@@ -30,7 +30,7 @@ app.include_router(dashboard_router)
 app.include_router(job_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173"],
+    allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173", "https://jobscout-kappa-rouge.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
