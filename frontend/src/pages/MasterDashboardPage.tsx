@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, ExternalLink, Mail, Search, Filter, ChevronDown } from "lucide-react";
+import { Briefcase, Mail, Search } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
