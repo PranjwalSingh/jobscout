@@ -78,7 +78,7 @@ export default function CoverLetterPage() {
   // ── Load cover letter — declared before handleSave so it can reference it ─
   const loadCoverLetter = useCallback(async (userJobId: string, jobTitle?: string) => {
     try {
-      const res = await fetch(`${API}/coverletter/get?user_job_id=${userJobId}`, {
+      const res = await fetch(`${API}/custom_cl/get?user_job_id=${userJobId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -111,7 +111,7 @@ export default function CoverLetterPage() {
     const { userJobId, pdfUrl, jobTitle } = state;
     setState({ stage: "saving", userJobId, html, pdfUrl, jobTitle });
     try {
-      const res = await fetch(`${API}/coverletter/edit`, {
+      const res = await fetch(`${API}/custom_cl/edit`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ user_job_id: userJobId, mode: "html", content: html }),
@@ -173,7 +173,7 @@ export default function CoverLetterPage() {
     const { userJobId, html, pdfUrl, jobTitle } = state;
     setState({ stage: "regenerating", userJobId, html, pdfUrl, jobTitle });
     try {
-      const res = await fetch(`${API}/coverletter/edit`, {
+      const res = await fetch(`${API}/custom_cl/edit`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ user_job_id: userJobId, mode: "regenerate" }),

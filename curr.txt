@@ -34,6 +34,29 @@ now mainly, we on backend;
         5. CREATE A COLD EMAIL SCRIPT, apparently its all the heat AND MAKE SURE TO DEVELOP A NLP MODEL THAT IS TRAINED ON HUMAN TEXTING AND CALM, HUMBLE EMAIL FORMULATIONS
                  AND ALSO PREPARE IT LIKE AN AGENT WHERE WE PROVIDE DETAILS TO AN LLM AND ASK IT TO GENERATE A PLAN OF ATTACK INVOLVING ABILITIES LIKE : "SET EMAIL DESTINATION", "WRITE EMAIL", "SEND EMAIL", "TRACK EMAIL"
 
+
+
+WE'LL CREATE A BRANCH AND A RELEASE, THE MAIN BRANCH WOULD BASICALLY STORE A LIST OF NEW ADDED JOBS THAT IT SCRAPED TO COMPETE WITH THE EQUIVALENT ONE MADE BY SIMPLIFY, JUST THIS ONE WILL BE FAR RICHER MATE!! BASICALLY A PUBLIC SIMPLE BRANCH THAT PEOPLE CAN FORK AND ON THEIR OWN SIDE MAINTAIN THIS SIMPLIFIED MASTER DASHBOARD THAT GETS UPDATED WITH JOBS EVERYDAY AND NOTIFIES THEM, LIKE A SUPER SIMPLIFIED VERSION OF JOBSCOUT JUST TO KEEP PEOPLE UPTO DATE ON JOBS WHILE THE PRODUCT IS GETTING built
+MOREOVER, WE'LL POST A LINKEDIN JOB JUST TO CREATE CREIDIBILITY
+MOREOVER WE'LL CREATE ON THE MAIN BRANCH A SINGLE RELEASE WHICH WILL BE THE START OF OUR JOBSCOUT, AN MVP BASICALLY THAT GOES WITH THE THING ABOVE LIKE THE SIMPLIFIED VERSION OF THE DASHBOARD FOR NOW, LIKE AN EXCEL SHEET JUST TO HELP STUDENTS MANAGE THEIR JOBS , WITH A SIMPLE BACKEND AND NOTIFICATION ABILITY (AND ALSO THE INITIAL EXPERIMENT FOR THE FROTNEND HOSTED SCRAPING JOBS AND OVERALL JUST TO CREATE CREDIBILITY BY PROMOTING MORE JOBS THEN SIMPLIFY+PITT REPO EVEN)
+        basically in this release, we'll keep super simple design, simple login stuff, and just support a few simple dashboards (winter coop, and spring coop available and an applied tracker, and a notifier on new job drops(via email))
+                alongside storing jobs in the readme too as needed, but literally ya this release is literally just providing users a look at the startup through github, but no code will be on this MAIN branch, 
+                                        then a MAIN-PROD (so basically, main doesnt show code since its our proprietary code, jsut a readme and the setup documentation and website links), whereas MAIN-PROD is the prod for me and ayush to just write the code for the MAIN branch so that is the simplified version of the mvp getting maintaining, whereas the actual progress is in a PROD branch which is just for me and ayush and then also our personal DEV branches (2), so 5 in total (basically, two backend and two frotend servers, a server for main-prod (accessible links through main branch) and a server setup for prod (not accessible until we release, or we slowly merge into main-prod)), where we'll have a simple release on main, and slowly, with stable tools, we'll move from prod to main.
+                        
+                        and basically post about this in linkedin
+                        and post about this in the uwaterloo reddit
+                        and ALSO POST ON OTHER REDDIT FORUMS (with alt accounts, with pretext of " my friend made this tool, check it out and please feedback, for swe co-ops for now ")
+                        Discord servers — UWaterloo, UofT, UBC all have job hunting channels. Post there as yourself, founders get more engagement than random posts anyway
+                        “We added X jobs today” — daily/weekly automated tweet or LinkedIn update with job counts. Looks like traction even when you’re small
+                        Tag companies in posts — when you post a job listing roundup on LinkedIn, tag the company. Sometimes their recruiters reshare it
+                        Poster QR codes in MC/DC bathrooms (cursed but it works, CS kids are on their phones anyway)
+                        email mathsoc (ASK NIHAL MIR FOR HELP TO PROMOTE), email cs coop community, email math coop community to promote, email CEE, email uwaterloo in whether they are interested in participating in this (affiliation, just for credibility)
+                        Dev.to post about how you built it — drives GitHub stars
+
+
+
+also need to make a mobile app version on this, just to go even deeper basically (and allow mobile notifications, not just emails)!!
+
     finally;
     now that all major logic is setup;
     2. Go write the backend logic for an auto form filling extension to save manual input times mainly with the ability to fetch the last two donwloads (coverletter, cv) and has access to user profile info and config info entirely and smartly fills all possible fields as much as possible

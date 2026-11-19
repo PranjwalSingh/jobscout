@@ -30,7 +30,7 @@ app.include_router(dashboard_router)
 app.include_router(job_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173", "https://jobscout-kappa-rouge.vercel.app"],
+    allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -645,7 +645,7 @@ def cv_get(user_job: dict=Depends(get_owned_user_job), current_user=Depends(get_
  
 @app.put("/custom_cv/edit")
 def cv_edit(cv_json: dict, user_job: dict=Depends(get_owned_user_job), current_user=Depends(get_current_user)):
-    # stamped = stamp_cv_idsE(cv_json, current_user)
+    # stamped = stamp_cv_ids(cv_json, current_user)
     
     tex_source = fill_template(cv_json, current_user)
     print("here")
@@ -827,8 +827,40 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
     }).execute()
     user_job_id = user_job_response.data[0]["id"]
     
-    return {"status": "ok", "job_id": job_id, "user_job_id": user_job_id}
+    # generate cover letter
+    cv_json = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute().data
+    job_data = {k: job_response.data[0].get(k, "") for k in ["title", "company", "location", "description", "requirements", "skills", "salary", "duration", "fields"]}
+    coverletter_text = cover_letter_generator(job_data, cv_json)
 
+    html_data = get_cover_letter_html(
+        cover_letter_text=coverletter_text,
+        candidate_name=current_user.get("display_name", ""),
+        candidate_email=current_user.get("email", ""),
+        candidate_phone=current_user.get("phone", ""),
+        candidate_location=current_user.get("location", ""),
+        candidate_links=current_user.get("links", []),
+    )
+    pdf_bytes = html_to_pdf(html_data)
+
+    path = f"{current_user['user_id']}/coverletter_{job_id}.pdf"
+    bucket = supabase_admin.storage.from_("coverletters")
+    bucket.upload(path, pdf_bytes, file_options={"content-type": "application/pdf", "upsert": "true"})
+    time.sleep(1)
+    pdf_url = bucket.get_public_url(path)
+
+    supabase_admin.table("user_jobs").update({
+        "cover_letter_text": coverletter_text,
+        "cover_letter_html": html_data,
+        "cover_letter_pdf_url": pdf_url,
+    }).eq("id", user_job_id).execute()
+    
+    return {
+        "status": "ok",
+        "job_id": job_id,
+        "user_job_id": user_job_id,
+        "job_title": json_output.get("title", ""),
+        "company": json_output.get("company", ""),
+    }
 
 class RefreshRequest(BaseModel):
     refresh_token: str
