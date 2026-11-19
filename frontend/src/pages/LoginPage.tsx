@@ -30,6 +30,7 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("token", data.token);
+      localStorage.setItem("refresh_token", data.refresh_token);
       navigate("/dashboard");
     } catch {
       setError("Network error. Is the backend running?");

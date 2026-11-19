@@ -89,13 +89,15 @@
 # Clean, free, scales with your traffic.
 from __future__ import annotations
 
-
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+BACKEND_DIR = PROJECT_ROOT / "backend"
+
+for path in (str(PROJECT_ROOT), str(BACKEND_DIR)):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 import os
 import re
 import sys
@@ -429,15 +431,15 @@ def layer3_and_4_extract_metadata(
     return matched_fields, matched_skills, salary, duration, season, requirements, is_relevant
 
 
-def layer5_insert_jobs(batch: list[dict]) -> int:
+def layer5_insert_jobs(batch: list[dict]) -> tuple[int, list[dict]]:
     if not batch:
-        return 0
+        return 0, []
     try:
-        supabase.table("jobs").insert(batch).execute()
-        return len(batch)
+        res = supabase.table("jobs").insert(batch).execute()
+        return len(res.data), res.data  # res.data has the rows with IDs
     except Exception as e:
         print(f"[layer5] insert error: {e}")
-        return 0
+        return 0, []
 
 
 def layer5_replace(
@@ -700,10 +702,11 @@ def run():
 
             print(f"[page] summary — seen={cards_seen} | no_title={cards_no_title} | no_url={cards_no_url} | layer1_fail={cards_layer1_fail} | dedup_skip={cards_dedup_skip} | queued={cards_queued}")
 
-            inserted      = layer5_insert_jobs(batch)
+            inserted, inserted_rows = layer5_insert_jobs(batch)
             total_inserted += inserted
             print(f"[layer5] inserted {inserted} jobs | total={total_inserted}")
-            user_jobs_batch = match_jobs_to_configs(batch, configs)
+
+            user_jobs_batch = match_jobs_to_configs(inserted_rows, configs)  # pass inserted_rows not batch
             if user_jobs_batch:
                 for i in range(0, len(user_jobs_batch), 1000):
                     supabase.table("user_jobs").upsert(

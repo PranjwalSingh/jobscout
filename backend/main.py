@@ -12,7 +12,7 @@ import os
 import httpx
 from jose import jwt, JWTError
 from pydantic import BaseModel
-from docling.document_converter import DocumentConverter
+import pymupdf
 from functions.cv_and_cl_gen import cv_parser, job_parser, cover_letter_generator
 from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_html, html_to_pdf
 import uuid
@@ -491,10 +491,9 @@ async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_cur
     file_bytes = await file.read()
     supabase_admin.storage.from_("cvs").upload(path, file_bytes, {"upsert":"true"})
     pdf_url = supabase_admin.storage.from_("cvs").get_public_url(path)
-    
-    converter = DocumentConverter()
-    result = converter.convert(pdf_url) 
-    cv_information = result.document.export_to_markdown()
+        
+    doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+    cv_information = "\n".join(page.get_text() for page in doc)
     
     json_output = cv_parser(cv_information)
 
@@ -646,7 +645,7 @@ def cv_get(user_job: dict=Depends(get_owned_user_job), current_user=Depends(get_
  
 @app.put("/custom_cv/edit")
 def cv_edit(cv_json: dict, user_job: dict=Depends(get_owned_user_job), current_user=Depends(get_current_user)):
-    # stamped = stamp_cv_ids(cv_json, current_user)
+    # stamped = stamp_cv_idsE(cv_json, current_user)
     
     tex_source = fill_template(cv_json, current_user)
     print("here")
@@ -799,13 +798,8 @@ def cl_edit(data: EditCoverLetterRequest, user_job: dict = Depends(get_owned_use
 @app.post("/coverletter/new_job")
 async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_current_user)):
     file_bytes = await file.read()
-    converter = DocumentConverter()
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(file_bytes)
-        tmp_path = tmp.name
-    result = converter.convert(tmp_path)
-    os.unlink(tmp_path)
-    job_information = result.document.export_to_markdown()    
+    doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+    job_information = "\n".join(page.get_text() for page in doc)
     json_output = job_parser(job_information)
 
 
@@ -834,3 +828,18 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
     user_job_id = user_job_response.data[0]["id"]
     
     return {"status": "ok", "job_id": job_id, "user_job_id": user_job_id}
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+@app.post("/refresh")
+def refresh_token(body: RefreshRequest):
+    try:
+        session = supabase.auth.refresh_session(body.refresh_token)
+        return {
+            "token": session.session.access_token,
+            "refresh_token": session.session.refresh_token,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")

@@ -1,0 +1,119 @@
+\documentclass{resume}
+\usepackage[left=0.75in,top=0.2in,right=0.75in,bottom=0.2in]{geometry}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+\renewcommand{\familydefault}{\rmdefault}
+
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black}
+
+\makeatletter
+\renewcommand{\printname}{
+  \begingroup
+    \hfil{\namesize\bf \@name}\hfil
+    \nameskip\break
+  \endgroup
+}
+\makeatother
+
+\newcommand{\tagged}[2]{#2}
+
+\name{Pranjwal Singh}
+\address{{\fontsize{9}{11}\selectfont  \hspace{0.8mm} $\vert$ \hspace{0.8mm}  \hspace{0.8mm} $\vert$ \hspace{0.8mm} www.linkedin.com/in/pranjwal-singh-09364b43a \hspace{0.8mm} $\vert$ \hspace{0.8mm} github.com/PranjwalS \hspace{0.8mm} $\vert$ \hspace{0.8mm} }}
+
+\begin{document}
+
+%% ── Education ────────────────────────────────────────────────────────────────
+\begin{rSection}{Education}
+
+{\fontsize{11}{15}\bf University of Waterloo} \hfill \, \\
+{\fontsize{10}{12} Bachelor of Computer Science Honours Co-Op} \hfill {\small \,} \\
+{\fontsize{9}{12}\selectfont Artificial Intelligence Specialization}
+
+\end{rSection}
+
+%% ── Experience ───────────────────────────────────────────────────────────────
+\begin{rSection}{Experience}
+
+\begin{rSubsection}
+  {Definity Financial}
+  {\small September 2025 - April 2030}
+  {Test Automation Developer}
+  { }
+{\fontsize{10}{12}\selectfont
+
+  \item Led the migration of a legacy Selenium desktop test suite to a Playwright-based framework, expanding automated coverage to iOS and Android platforms and achieving a 52\% reduction in total test execution time, thereby improving release velocity and reliability.
+
+  \item Engineered a Playwright-driven Record-and-Replay utility that captures tester interactions and outputs reusable JSON test scripts, cutting test authoring effort from multiple days to under 30 seconds per scenario while maintaining full functional fidelity.
+
+  \item Designed and implemented a visual regression testing solution that programmatically compares live UI pages against source Figma designs, leveraging Gemini (Vertex AI) on Google Cloud Platform to produce detailed discrepancy reports, which eliminated 85\% of manual QA inspection effort and increased defect detection early in the development cycle.
+
+}
+\end{rSubsection}
+\vspace{-3mm}
+
+\begin{rSubsection}
+  {Cadets (CJCR), Department of National Defence}
+  {\small June 2025 - August 2025}
+  {Software Developer Intern}
+  { }
+{\fontsize{10}{12}\selectfont
+
+  \item Developed and deployed a Power Apps and Dataverse application that digitized asset request, tracking, and return processes for over 200 field locations, eliminating paper-based workflows and providing real-time inventory visibility across the national defence network.
+
+  \item Augmented an existing Vue.js/.NET enterprise portal used by more than 10,000 personnel with a SignalR-based real-time messaging layer, enabling secure cross-organization communication and reducing dependence on third-party messaging services, which streamlined operational coordination.
+
+}
+\end{rSubsection}
+\vspace{-3mm}
+
+\begin{rSubsection}
+  {Ericsson}
+  {\small June 2024 - August 2024}
+  {Digital Transformation Intern}
+  { }
+{\fontsize{10}{12}\selectfont
+
+  \item Oversaw continuous integration and delivery pipelines for telecom infrastructure using Jenkins, Kubernetes, and Grafana, proactively diagnosing build and deployment failures, tracking key performance indicator regressions, and managing incident tickets end-to-end to ensure service reliability and rapid resolution.
+
+}
+\end{rSubsection}
+\vspace{-3mm}
+
+\end{rSection}
+
+%% ── Skills ───────────────────────────────────────────────────────────────────
+\vspace{-2mm}
+\begin{rSection}{Skills}
+{\fontsize{9.5}{13}\selectfont
+\begin{tabular}{ @{} >{\bfseries}l @{\hspace{4ex}} p{0.69\textwidth} }
+
+Skills & Python, C, C++, TypeScript, SQL, Java React, Vue.js, FastAPI, Flask, Celery, .NET, Selenium, Playwright LLM Orchestration, RAG Pipelines, Prompt Engineering, Multi-Agent Systems, OpenAI API, Groq API, Gemini (Vertex AI), Pinecone Git, Docker, Jenkins, Linux, K8s, PostgreSQL, MongoDB, Redis, Azure, Google Cloud Platform, CI/CD, Agile, REST APIs \\
+
+\end{tabular}
+}
+\end{rSection}
+
+%% ── Projects ─────────────────────────────────────────────────────────────────
+\vspace{-2mm}
+\begin{rSection}{Projects}
+\vspace{-1mm}
+
+\fontsize{10}{12}\begin{rSubsection}
+  {Job Aggregator, Tracker \& Career Platform: JobScout}{}{}{}
+{\fontsize{9}{12}\selectfont
+
+  \item Architected and deployed a cloud-native job aggregation platform on Azure, featuring a FastAPI service layer and a multi-stage asynchronous processing pipeline built with Kafka, Celery, and Redis that harvests, filters, and routes listings from multiple job boards into a PostgreSQL data store, ensuring high throughput and fault-tolerant data ingestion.
+
+  \item Created end-to-end LLM-driven workflows that score job relevance, generate mock interview questions, produce OA responses, and automate cold-email outreach, integrating OpenAI function calls to deliver personalized content at scale.
+
+  \item Implemented an autonomous application bot using Playwright that programmatically navigates employer portals, populates application forms, and leverages OpenAI function calls to answer dynamic questionnaire fields, achieving reliable end-to-end job submission without manual intervention.
+
+  \item Developed a retrieval-augmented generation (RAG) career assistant that indexes GitHub repositories, historical resumes, and career metadata, then synthesizes customized CVs and cover letters for each target posting, demonstrating expertise in vector search (Pinecone) and prompt engineering.
+
+}
+\end{rSubsection}
+\vspace{-2mm}
+
+\end{rSection}
+
+\end{document}

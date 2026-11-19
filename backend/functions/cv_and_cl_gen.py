@@ -1,6 +1,5 @@
 import json
 from groq import Groq
-from docling.document_converter import DocumentConverter
 import os
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "backend.env"), override=True)
