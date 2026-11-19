@@ -26,8 +26,7 @@ from functions.cv_compiler import compile_cv_pdf, LatexCompileError
 import csv
 
 app = FastAPI()
-app.include_router(dashboard_router)
-app.include_router(job_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173"],
@@ -36,6 +35,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(dashboard_router)
+app.include_router(job_router)
 app.mount("/fonts", StaticFiles(directory="functions/fonts"), name="fonts")
 
 
